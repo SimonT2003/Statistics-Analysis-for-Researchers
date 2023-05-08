@@ -1,0 +1,81 @@
+---
+title: "Tasting Tea"
+format: docx
+editor: visual
+---
+
+Here's the plan. We'll flip 10 coins. We'll call a "heads" ("H") a correct guess and "tails" an incorrect guess.
+
+```{r}
+#| output: false
+library(mosaic)
+```
+
+Simulate one coin flip to simulate one guess:
+
+```{r}
+rflip()
+```
+
+Simulate ten coin flips to simulate ten guesses:
+
+```{r}
+rflip(10)
+```
+
+We don't want to do that just once!
+
+```{r}
+
+do(3) * rflip(10)
+
+```
+
+Nor do we want to simulate 3 samples.
+
+```{r}
+random.ladies <- do(10000) * rflip(10)
+
+```
+
+Let's look at the results of the 10,000 samples.
+
+```{r}
+
+tally(~heads, data=random.ladies)
+
+tally(~heads, data=random.ladies, format='prop')
+
+tally(~heads, data=random.ladies, format='prop')
+
+histogram(~heads, data = random.ladies, width = 1)
+```
+
+Suppose the lady guesses 8 out of 10 tastings correct.
+
+```{r}
+observed=8
+prop(~ heads >=8, data=random.ladies)
+histogram(~heads, data = random.ladies, width = 1, groups=(heads >= observed))
+```
+
+# Different Simulation Method
+
+Suppose now we give her five cards labeled "milk first"", and she must place them next to the cups that had the milk poured first. How does this design change things?
+
+We could simulate this by shuffling a deck of 10 cards and dealing five of them.
+
+```{r}
+cards <- factor(c("M", "M", "M", "M", "M", "T", "T", "T", "T", "T"))
+tally(~deal(cards, 5))
+```
+
+Now more simulate multiple experiments:
+
+```{r}
+results <- do(10000) * tally(deal(cards, 5))
+tally(~M, data = results)
+tally(~M, data = results, format = "prop")
+
+
+```

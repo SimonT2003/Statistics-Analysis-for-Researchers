@@ -1,0 +1,72 @@
+---
+title: "Learning Lab 12 - MythBusters"
+format: docx
+editor: visual
+---
+
+```{r}
+#| output: false
+library(mosaic)
+library(dplyr)
+```
+
+Read in the data:
+
+```{r}
+yawn =read.csv("https://raw.githubusercontent.com/jenbroatch/STP281/main/Yawn.csv")
+```
+
+We want 'Outcome' to be numeric:
+
+```{r}
+yawn_modified <- yawn %>% mutate(
+  numeric_outcomes = ifelse(yawn$Outcome=="Yawn",1,0)
+  
+)
+yawn_modified
+```
+
+Calculate the proportion of yawners for each group:
+
+```{r}
+obs <- prop(numeric_outcomes~YawnSeed, data=yawn_modified)
+obs
+```
+
+The proportion for yawners in the Seed group is 0.294 and the proportion for yawners in the NoSeed group is 0.25. The yawn Seed group did have a higher proportion than the yawn NoSeed group.
+
+So, next let's see what "shuffle" does!
+
+```{r}
+set.seed(722)
+shuffle(yawn_modified$YawnSeed)
+
+diff(prop(numeric_outcomes ~ shuffle(YawnSeed), data=yawn_modified))
+```
+
+Now let's create a null distribution of no difference with at least 1000 simulated random assignments
+
+```{r}
+yawn.null <- do(1000) * diff(prop(numeric_outcomes ~ shuffle(YawnSeed), 
+                                  data=yawn_modified))
+```
+
+Next, let's plot the result in a histogram
+
+```{r}
+histogram(~ prop_1.Seed, groups=(prop_1.Seed >= obs), data=yawn.null, width=0.1,
+          xlab="Distribution of difference in proportions \n under the null hypothesis")
+```
+
+Calculate the p-value and see if the results were (or more) extreme as the actual study
+
+```{r}
+extreme=count(yawn.null$prop_1.Seed >= obs)
+extreme
+pvalue=extreme/1000
+pvalue
+```
+
+Based on my results from above, it appears that our p-value is significant. i.e. 0.026 \< 0.05, and an extreme value of 26/50 = 0.52 might suggest that the observed value is more extreme than a large proportion of the values obtained from the permutations. So, we have sufficient evidence to reject the claim that there is no difference in proportions of yawners between the two groups. This implies that there is a difference in prop of yawners between the two groups, which may support the idea that yawning can/may be contagious.
+
+-   I think I missed interpret the extreme value (26)

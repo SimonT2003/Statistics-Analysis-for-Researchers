@@ -1,0 +1,80 @@
+---
+title: "Learning Lab 11 - Bootstrap"
+format: docx
+editor: visual
+---
+
+```{r}
+#| output: false
+library(mosaic)
+```
+
+Read in the data:
+
+```{r}
+carsboot =read.csv("https://raw.githubusercontent.com/jenbroatch/STP281/master/carsboot.csv") 
+head(carsboot)
+```
+
+Visualize the data:
+
+```{r}
+stripchart(carsboot$kWhper100miles,at=.1, xlab="kWh/100 miles", col="darkgreen", method = "stack", offset = .5, pch=19)
+favstats(~carsboot$kWhper100miles)
+```
+
+Create one bootstrap sample:
+
+```{r}
+set.seed(722)
+n=length(carsboot$kWhper100miles)
+s1=sample(carsboot$kWhper100miles,n , replace=T)
+sort(s1)
+median(s1)
+```
+
+Generate 10,000 (or more samples):
+
+```{r}
+resamples <- lapply(1:10000, function(i) sample(carsboot$kWhper100miles, replace = T))
+resamples[1:5]
+```
+
+Now, let's calculate the median for each re-sampled value:
+
+```{r}
+#calculating the median for each bootstrap sample
+r.median <- sapply(resamples, median)
+
+mean(r.median)
+sqrt(var(r.median))
+hist(r.median)
+```
+
+Calculate a percentile interval:
+
+```{r}
+r.medians=sort(r.median)
+r.medians[250] #represents the 2.5th percentile
+r.medians[9750]
+```
+
+Use the library boot to expand options:
+
+```{r}
+#| output: false
+library(boot) 
+```
+
+You must create a function that creates the statistic that you wish.
+
+```{r}
+# Creating Function to obtain median from the data
+medianfun <- function(data, i){
+  d <- data[i]
+  return(median(d))   
+}
+# Performing 10000 replications with boot 
+bootout <- boot(carsboot[,"kWhper100miles"], statistic=medianfun, R=10000)
+boot.ci(bootout, conf=0.95, type="perc")
+```

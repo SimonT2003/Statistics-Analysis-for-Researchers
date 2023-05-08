@@ -1,0 +1,88 @@
+---
+title: "Final Report - FIFA Data"
+format: docx
+editor: visual
+---
+
+By Simon Tran
+
+STP 281
+
+04/26/23
+
+```{r}
+#| output: false
+library(mosaic)
+library(boot)
+```
+
+Let's recall from our previous report on FIFA. Again, FIFA, which stands for Fédération Internationale de Football Association, is the official international governing body for soccer. They are in charge of organizing and regulating international soccer tournaments such as the men's and women's World Cup. FIFA has had a significant impact on this sport, including the creation of rules and regulations, the organization of tournaments, and the promotion of soccer worldwide.
+
+It just so happens that the most popular soccer video game in the world is also called FIFA. From our previous report, we briefly went over what the game is about and the rules to follow. When exploring the FIFA game, imagine that someone pondered an important research question. *Is there a difference in values between left-footed and right-footed players?* To answer it, we briefly gathered our data, transformed the data using a log transformation due to its skewness, conduct a two sample t-test, and then transformed the results back to its original scale. This whole process is part of the traditional hypothesis testing method. This process relies on assumptions such as normality of the data and homogeneity of variance. In some situations, it would be unfortunate if the assumptions were violated.
+
+So, what if there was another method that does not rely on any assumptions about the underlying population. There is the bootstrap method, which is a non-parametric re-sampling technique. We will use this method to re-answer our main question above and compare the results (the CIs) from this method with the results from the last report.
+
+Let's first read in the data:
+
+```{r}
+FIFA_data <- read.csv('https://raw.githubusercontent.com/jenbroatch/STP281/main/FIFADataadjusted.csv')
+```
+
+Next, let's select the right variables and make sure the units are correct:
+
+```{r}
+FIFA_data2 <- FIFA_data %>% 
+  mutate(Value.in.USD = Value * 1.23) %>% # converting from Euros to USD
+  select(Preferred.Foot, Value.in.USD)
+
+```
+
+Let's note that we are using the same FIFA data from the last report. There are **16,643** **entries/observations**: **3,820 left-footers** and **12,823 right-footers**.
+
+Visualize the data:
+
+```{r}
+bwplot(Value.in.USD ~ Preferred.Foot, data = FIFA_data2, main = 'Comparing Average Values Between \n Left-Footed and Right-Footed Soccer Players')
+
+mean(Value.in.USD ~ Preferred.Foot, data=FIFA_data2)
+```
+
+Based on the original plot above, you can see the heavy skewness from both groups. Remember, there are a limited number of best players in the world that have a very high market value than the average number of decent players, hence the **large number of outliers**. In our last report, we had to log transformed it in order to meet the normality assumptions required by the t-test. But with this new method, we will make no bold assumptions - just do bootstrap!
+
+Next, we will produce several pseudo-samples from the population if we suppose the sample above approximates the population rather well: what we'll really do is take this sample and re-sample it --- generate multiple samples of the same size, using the same values. Then we'll work with the generated sample sets.
+
+```{r}
+set.seed(123)
+
+# Creating a Function to obtain the means from the data
+diff_means <- function(data, i) {
+
+  left_foot <- data[i,] %>% filter(Preferred.Foot == "Left") %>% select(Value.in.USD)
+  
+  right_foot <- data[i,] %>% filter(Preferred.Foot == "Right") %>% select(Value.in.USD)
+  
+  result = mean(left_foot$Value.in.USD) - mean(right_foot$Value.in.USD)
+}
+
+# Performing 1000 replications with boot 
+bootout <- boot(data = FIFA_data2, statistic=diff_means, R=1000)
+
+# Bootstrap Confidence Interval
+boot.ci(bootout, conf=0.95, type="perc")
+```
+
+```{r}
+hist(bootout$t, main = 'Histogram of the Difference in Means', xlab = 'Difference in Means (USD)')
+
+abline(v = c(-8622, 539503), lty = 1, col = "red")
+```
+
+Based on the result above, with 95% confidence, the difference in the true mean value of the two groups is between **-8,622** and **539,503** USD. **'0' does lie within that bootstrap percentile confidence interval**, which implies that **there may be no significant differences** in the true mean value between the left-footed and right-footed players. The histogram above also support the result with the solid red lines representing the 2.5th and 97.5th percentiles of the bootstrap distribution.
+
+What's interesting about this result is that it opposes the result from our last report, using the two sample t-test. We had a confidence interval of **(1.102, 1.216)** in the original scale. '0' did not lie within that CI, so we were 95% confident that there was a difference in true mean value between the two groups. Since this is a puzzling observation, let's keep in mind that we had to log-transformed our data in order to perform a two sample t-test as otherwise we would violate normality. For the bootstrap method, we just did bootstrap on our non-transformed sample, so we came to two different conclusions.
+
+The real question, knowing that the two methods gave us different answers, is which one is reliable or correct? It's important to always remember that both methods and any other methods have their own advantages and limitations. The fundamental benefit of t-tests is its simplicity and convenience of usage. However, if the data does not meet the assumptions of normality or equal variance, their accuracy may be limited. And for Bootstrap, it can be computationally demanding, particularly for big sample sets.
+
+For this case in answering the main question of this report, the Bootstrap method may be a considerable approach because we don't need to rely on normality assumption and we don't need to force the t-distribution. The only important thing to keep in mind is making sure that the samples are a representative of the whole population as otherwise it may not be accurate. And because our original data is skewed, the Bootstrap method might be preferable than the t-test. Even after the log transformation there were still some major outliers.
+
+Overall, we only performed a basic bootstrap process. There might be some other advanced bootstrap methods or other tests that could help us in accurately answering the main question. But the Bootstrap method does proved to be a powerful tool when needed.
